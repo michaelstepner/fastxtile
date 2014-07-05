@@ -1,4 +1,4 @@
-*! version 1.20  7sep2013  Michael Stepner, stepner@mit.edu
+*! version 1.21  8oct2013  Michael Stepner, stepner@mit.edu
 
 /* CC0 license information:
 To the extent possible under law, the author has dedicated all copyright and related and neighboring rights
@@ -101,7 +101,7 @@ program define fastxtile, rclass
 
 		* Store quantile boundaries in list
 		forvalues i=1/`=`nquantiles'-1' {
-			local cutvallist `cutvallist',`r(r`i')'
+			local cutvallist `cutvallist' r(r`i')
 		}
 	}
 	else if "`cutpoints'"!="" { /***** CUTPOINTS *****/
@@ -127,7 +127,7 @@ program define fastxtile, rclass
 			local nquantiles = r(r) + 1
 			
 			forvalues i=1/`r(r)' {
-				local cutvallist `cutvallist',`=`cutvals'[`i',1]'
+				local cutvallist `cutvallist' `cutvals'[`i',1]
 			}
 		}
 	}
@@ -139,16 +139,18 @@ program define fastxtile, rclass
 		
 		* parse numlist
 		numlist "`cutvalues'"
+		local cutvallist `"`r(numlist)'"'
 		local nquantiles=wordcount(`"`r(numlist)'"')+1
-		
-		* put commas between each value
-		local cutvallist `",`r(numlist)'"'
-		local cutvallist : subinstr local cutvallist " " ",", all
-	
 	}
 
+	* Pick data type for quantile variable
+	if (`nquantiles'<=100) local qtype byte
+	else if (`nquantiles'<=32,740) local qtype int
+	else local qtype long
+
 	* Create quantile variable
-	qui gen `varlist'=1+irecode(`exp'`cutvallist') if `touse'
+	local cutvalcommalist : subinstr local cutvallist " " ",", all
+	qui gen `qtype' `varlist'=1+irecode(`exp',`cutvalcommalist') if `touse'
 	label var `varlist' "`nquantiles' quantiles of `exp'"
 	
 	* Return values
@@ -157,7 +159,6 @@ program define fastxtile, rclass
 	
 	return scalar N = `popsize'
 	
-	local cutvallist : subinstr local cutvallist "," " ", all
 	tokenize `"`cutvallist'"'
 	forvalues i=`=`nquantiles'-1'(-1)1 {
 		return scalar r`i' = ``i''
