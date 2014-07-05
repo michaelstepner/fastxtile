@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.11  2sep2013}{...}
+{* *! version 1.20  7sep2013}{...}
 {viewerjumpto "Syntax" "fastxtile##syntax"}{...}
 {viewerjumpto "Description" "fastxtile##description"}{...}
 {viewerjumpto "Options" "fastxtile##options"}{...}
@@ -96,6 +96,8 @@ repeated values. This option cannot be combined with any other options.
 {phang}{opth randvar(varname)} requests that {it:varname} be used to select a
 sample of observations when computing the quantile boundaries.  Sampling increases
 the speed of {opt fastxtile}, but generates approximate quantiles due to sampling error.
+It is possible to omit this option and still perform random sampling from U[0,1]
+as described below in {opt randcut(#)} and {opt randn(#)}.
 
 {phang}{opt randcut(#)} specifies the upper bound on the variable contained
 in {opt randvar(varname)}. Quantile boundaries are approximated using observations for which
@@ -136,12 +138,12 @@ with {opt randcut(#)}.
 {marker acknowledgements}{...}
 {title:Acknowledgements}
 
-{p 4 4 2}The {cmd:fastxtile} code and documentation are based on the built-in xtile command.
+{pstd}The {cmd:fastxtile} code and documentation are based on the built-in xtile command.
 
-{p 4 4 2}Raj Chetty provided the impetus for this program, and the idea of using random sampling to generate
+{pstd}Raj Chetty provided the impetus for this program, and the idea of using random sampling to generate
 approximate quantiles quickly in large datasets.
 
-{p 4 4 2}Laszlo Sandor suggested the option {opt randn()}, pointing out that the expected error in
+{pstd}Laszlo Sandor suggested the option {opt randn()}, pointing out that the expected error in
 the size of the bins is proportional to the sample size, not the sampling rate.
 
 
