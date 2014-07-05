@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.20  7sep2013}{...}
+{* *! version 1.21  8oct2013}{...}
 {viewerjumpto "Syntax" "fastxtile##syntax"}{...}
 {viewerjumpto "Description" "fastxtile##description"}{...}
 {viewerjumpto "Options" "fastxtile##options"}{...}
@@ -55,12 +55,11 @@ are specified, in which case no weights are allowed.
 {title:Description}
 
 {pstd}
-{opt fastxtile} is a drop in replacement for {manhelp xtile D}.  It has the same
-syntax and produces the same results, but has been optimized to run
-significantly faster on large datasets.
+{opt fastxtile} is a drop in replacement for {manhelp xtile D}.  It has the same syntax and produces identical results, but has been optimized to be more computationally efficient.  The
+difference in running time is substantial in large datasets.
 
 {pstd}
-It also supports computing the quantile boundaries using only a sample of the data.
+It also supports computing the quantile boundaries using a random sample of the data.
 This further increases the speed, but generates approximate quantiles due to sampling error.
 
 
