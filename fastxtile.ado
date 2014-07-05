@@ -1,4 +1,4 @@
-*! version 1.21  8oct2013  Michael Stepner, stepner@mit.edu
+*! version 1.22  4jul2014  Michael Stepner, stepner@mit.edu
 
 /* CC0 license information:
 To the extent possible under law, the author has dedicated all copyright and related and neighboring rights
@@ -144,8 +144,8 @@ program define fastxtile, rclass
 	}
 
 	* Pick data type for quantile variable
-	if (`nquantiles'<=100) local qtype byte
-	else if (`nquantiles'<=32,740) local qtype int
+	if (`nquantiles'<=maxbyte()) local qtype byte
+	else if (`nquantiles'<=maxint()) local qtype int
 	else local qtype long
 
 	* Create quantile variable
