@@ -1,9 +1,4 @@
-*! version 1.09  27aug2013  Michael Stepner, stepner@mit.edu
-
-* XX implement randn() in fastxtile
-* investigate Laszlo's fastxtile mystery
-* update help file: randn(), saved results, acknowledge raj (random sampling) and laszlo (randn)
-
+*! version 1.1  27aug2013  Michael Stepner, stepner@mit.edu
 
 program define fastxtile, rclass
 	version 11
@@ -15,7 +10,7 @@ program define fastxtile, rclass
 
 	* Extract parameters
 	syntax newvarname=/exp [if] [in] [,Nquantiles(integer 2) Cutpoints(varname numeric) ALTdef ///
-		CUTValues(numlist ascending) randvar(varname numeric) randcut(real 1)]
+		CUTValues(numlist ascending) randvar(varname numeric) randcut(real 1) randn(integer -1)]
 
 	* Mark observations which will be placed in quantiles
 	marksample touse, novarlist
@@ -26,7 +21,33 @@ program define fastxtile, rclass
 	if "`cutpoints'"=="" & "`cutvalues'"=="" { /***** NQUANTILES *****/
 		if `"`wt'"'!="" & "`altdef'"!="" {
 			di as error "altdef option cannot be used with weights"
-			exit
+			exit 198
+		}
+		
+		if `randn'!=-1 {
+			if `randcut'!=1 {
+				di as error "cannot specify both randcut() and randn()"
+				exit 198
+			}
+			else if `randn'<1 {
+				di as error "randn() must be a positive integer"
+				exit 198
+			}
+			else if `randn'>`popsize' {
+				di as text "randn() is larger than the population. using the full population."
+				local randvar=""
+			}
+			else {
+				local randcut=`randn'/`popsize'
+				
+				if "`randvar'"!="" {
+					qui sum `randvar', meanonly
+					if r(min)<0 | r(max)>1 {
+						di as error "with randn(), the randvar specified must be in [0,1] and ought to be uniformly distributed"
+						exit 198
+					}
+				}
+			}
 		}
 
 		* Check if need to gen a temporary uniform random var
@@ -34,10 +55,10 @@ program define fastxtile, rclass
 			tempvar randvar
 			gen `randvar'=uniform()
 		}
-		* Randcut sanity check
+		* randcut sanity check
 		else if `randcut'!=1 {
 			di as error "if randcut() is specified without randvar(), a uniform r.v. will be generated and randcut() must be in (0,1)"
-			exit
+			exit 198
 		}
 
 		* Mark observations used to calculate quantile boundaries
@@ -53,13 +74,13 @@ program define fastxtile, rclass
 		qui count if `randsample'
 		local samplesize=r(N)
 		if (`nquantiles' > r(N) + 1) {
-			if ("`randvar'"=="") di as error "nquantiles() must be less than or equal to number of nonmissing observations [`r(N)'] plus one"
-			else di as error "nquantiles() must be less than or equal to number of sampled nonmissing observations [`r(N)'] plus one"
-			exit
+			if ("`randvar'"=="") di as error "nquantiles() must be less than or equal to the number of observations [`r(N)'] plus one"
+			else di as error "nquantiles() must be less than or equal to the number of sampled observations [`r(N)'] plus one"
+			exit 198
 		}
 		else if (`nquantiles' < 2) {
 			di as error "nquantiles() must be greater than or equal to 2"
-			exit
+			exit 198
 		}
 
 		* Compute quantile boundaries
@@ -73,11 +94,11 @@ program define fastxtile, rclass
 		* Parameter checks
 		if "`cutvalues'"!="" {
 			di as error "cannot specify both cutpoints() and cutvalues()"
-			exit
+			exit 198
 		}		
-		if "`wt'"!="" | "`randvar'"!="" | "`ALTdef'"!="" | `randcut'!=1 | `nquantiles'!=2 {
-			di as error "cutpoints() cannot be used with nquantiles(), altdef, randvar() or randcut() or weights"
-			exit
+		if "`wt'"!="" | "`randvar'"!="" | "`ALTdef'"!="" | `randcut'!=1 | `nquantiles'!=2 | `randn'!=-1 {
+			di as error "cutpoints() cannot be used with nquantiles(), altdef, randvar(), randcut(), randn() or weights"
+			exit 198
 		}
 
 		tempname cutvals
@@ -95,9 +116,9 @@ program define fastxtile, rclass
 		}
 	}
 	else { /***** CUTVALUES *****/
-		if "`wt'"!="" | "`randvar'"!="" | "`ALTdef'"!="" | `randcut'!=1 | `nquantiles'!=2 {
-			di as error "cutvalues() cannot be used with nquantiles(), altdef, randvar(), randcut() or weights"
-			exit
+		if "`wt'"!="" | "`randvar'"!="" | "`ALTdef'"!="" | `randcut'!=1 | `nquantiles'!=2 | `randn'!=-1 {
+			di as error "cutvalues() cannot be used with nquantiles(), altdef, randvar(), randcut(), randn() or weights"
+			exit 198
 		}
 		
 		* parse numlist
