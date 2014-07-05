@@ -1,6 +1,11 @@
-*! version 1.0  4nov2012  Michael Stepner, michaelstepner@gmail.com
+*! version 1.09  27aug2013  Michael Stepner, stepner@mit.edu
 
-program define fastxtile
+* XX implement randn() in fastxtile
+* investigate Laszlo's fastxtile mystery
+* update help file: randn(), saved results, acknowledge raj (random sampling) and laszlo (randn)
+
+
+program define fastxtile, rclass
 	version 11
 
 	* Parse weights, if any
@@ -9,15 +14,14 @@ program define fastxtile
 	local wt "`s(weight)'"  /* contains [weight=exp] or nothing */
 
 	* Extract parameters
-	syntax newvarname=/exp [if] [in] [,Nquantiles(integer 2) Cutpoints(varname) ALTdef ///
-		CUTValues(numlist ascending) randvar(varname) randcut(real 1) version]
-		
-	if ("`version'"=="version") di "fastxtile, version 1.0, 4 November 2012."
+	syntax newvarname=/exp [if] [in] [,Nquantiles(integer 2) Cutpoints(varname numeric) ALTdef ///
+		CUTValues(numlist ascending) randvar(varname numeric) randcut(real 1)]
 
 	* Mark observations which will be placed in quantiles
 	marksample touse, novarlist
 	markout `touse' `exp'
-
+	qui count if `touse'
+	local popsize=r(N)
 
 	if "`cutpoints'"=="" & "`cutvalues'"=="" { /***** NQUANTILES *****/
 		if `"`wt'"'!="" & "`altdef'"!="" {
@@ -47,6 +51,7 @@ program define fastxtile
 
 		* Error checks
 		qui count if `randsample'
+		local samplesize=r(N)
 		if (`nquantiles' > r(N) + 1) {
 			if ("`randvar'"=="") di as error "nquantiles() must be less than or equal to number of nonmissing observations [`r(N)'] plus one"
 			else di as error "nquantiles() must be less than or equal to number of sampled nonmissing observations [`r(N)'] plus one"
@@ -75,21 +80,21 @@ program define fastxtile
 			exit
 		}
 
-
-		qui count if `cutpoints'<.
+		tempname cutvals
+		qui tab `cutpoints', matrow(`cutvals')
+		
 		if r(N)==0 {
 			di as error "cutpoints() all missing"
 			exit 2000
 		}
-		local nquantiles = r(N) + 1
+		else {
+			local nquantiles = r(N) + 1
 
-		tempname cutpointvals
-		qui tab `1', matrow(cutpointvals)
-
-		local prefix "cutpointvals["
-		local suffix ",1]"
+			local prefix "`cutvals'["
+			local suffix ",1]"
+		}
 	}
-	else { /***** cutvalues *****/
+	else { /***** CUTVALUES *****/
 		if "`wt'"!="" | "`randvar'"!="" | "`ALTdef'"!="" | `randcut'!=1 | `nquantiles'!=2 {
 			di as error "cutvalues() cannot be used with nquantiles(), altdef, randvar(), randcut() or weights"
 			exit
@@ -97,17 +102,20 @@ program define fastxtile
 		
 		* parse numlist
 		numlist "`cutvalues'"
-		local nquantiles=`: word count `r(numlist)''
-		tokenize `r(numlist)'
+		local nqm1=wordcount(`"`r(numlist)'"')
+		local nquantiles=`nqm1'+1
+
+		tokenize `"`r(numlist)'"'
 		
-		* store in scalars
-		forvalues i=1/`nquantiles' {
-			tempname r`i'
-			scalar define r`i'=``i''
+		* store in matrix
+		tempname cutvals
+		matrix `cutvals'=J(`nqm1',1,.)
+		forvalues i=1/`nqm1' {
+			matrix `cutvals'[`i',1]=``i''
 		}
 		
-		local prefix "r"
-		local suffix ""
+		local prefix "`cutvals'["
+		local suffix ",1]"
 	
 	}
 
@@ -117,16 +125,22 @@ program define fastxtile
 	qui gen `varlist'=1 if `touse' &  `exp'<=`prefix'1`suffix'
 	
 	if `nquantiles'>2 {
-		tempname i j
 		forvalues i = 2/`nqm1' {
-			local j=`i'-1
-			qui replace `varlist'=`i' if `touse' & `exp'<=`prefix'`i'`suffix' & `exp'>`prefix'`j'`suffix'
+			qui replace `varlist'=`i' if `touse' & `exp'<=`prefix'`i'`suffix' & `exp'>`prefix'`=`i'-1'`suffix'
 		}			
 	}
 	
 	qui replace `varlist'=`nquantiles' if `touse' & `exp'>`prefix'`nqm1'`suffix'
 
 	label var `varlist' "`nquantiles' quantiles of `exp'"
+	
+	* Return values
+	if ("`samplesize'"!="") return scalar n = `samplesize'
+	else return scalar n = .
+	return scalar N = `popsize'
+	forvalues i=`nqm1'(-1)1 {
+		return scalar r`i' = `prefix'`i'`suffix'
+	}
 
 end
 
