@@ -1,4 +1,15 @@
-*! version 1.11  2sep2013  Michael Stepner, stepner@mit.edu
+*! version 1.20  7sep2013  Michael Stepner, stepner@mit.edu
+
+/* CC0 license information:
+To the extent possible under law, the author has dedicated all copyright and related and neighboring rights
+to this software to the public domain worldwide. This software is distributed without any warranty.
+
+This code is licensed under the CC0 1.0 Universal license.  The full legal text as well as a
+human-readable summary can be accessed at http://creativecommons.org/publicdomain/zero/1.0/
+*/
+
+* Why did I include a formal license? Jeff Atwood gives good reasons: http://www.codinghorror.com/blog/2007/04/pick-a-license-any-license.html
+
 
 program define fastxtile, rclass
 	version 11
@@ -88,8 +99,10 @@ program define fastxtile, rclass
 		* Compute quantile boundaries
 		_pctile `exp' if `randsample' `wt', nq(`nquantiles') `altdef'
 
-		local prefix "r(r"
-		local suffix ")"
+		* Store quantile boundaries in list
+		forvalues i=1/`=`nquantiles'-1' {
+			local cutvallist `cutvallist',`r(r`i')'
+		}
 	}
 	else if "`cutpoints'"!="" { /***** CUTPOINTS *****/
 	
@@ -106,15 +119,16 @@ program define fastxtile, rclass
 		tempname cutvals
 		qui tab `cutpoints', matrow(`cutvals')
 		
-		if r(N)==0 {
+		if r(r)==0 {
 			di as error "cutpoints() all missing"
 			exit 2000
 		}
 		else {
-			local nquantiles = r(N) + 1
-
-			local prefix "`cutvals'["
-			local suffix ",1]"
+			local nquantiles = r(r) + 1
+			
+			forvalues i=1/`r(r)' {
+				local cutvallist `cutvallist',`=`cutvals'[`i',1]'
+			}
 		}
 	}
 	else { /***** CUTVALUES *****/
@@ -125,44 +139,28 @@ program define fastxtile, rclass
 		
 		* parse numlist
 		numlist "`cutvalues'"
-		local nqm1=wordcount(`"`r(numlist)'"')
-		local nquantiles=`nqm1'+1
-
-		tokenize `"`r(numlist)'"'
+		local nquantiles=wordcount(`"`r(numlist)'"')+1
 		
-		* store in matrix
-		tempname cutvals
-		matrix `cutvals'=J(`nqm1',1,.)
-		forvalues i=1/`nqm1' {
-			matrix `cutvals'[`i',1]=``i''
-		}
-		
-		local prefix "`cutvals'["
-		local suffix ",1]"
+		* put commas between each value
+		local cutvallist `",`r(numlist)'"'
+		local cutvallist : subinstr local cutvallist " " ",", all
 	
 	}
-
-	local nqm1=`nquantiles'-1
 
 	* Create quantile variable
-	qui gen `varlist'=1 if `touse' &  `exp'<=`prefix'1`suffix'
-	
-	if `nquantiles'>2 {
-		forvalues i = 2/`nqm1' {
-			qui replace `varlist'=`i' if `touse' & `exp'<=`prefix'`i'`suffix' & `exp'>`prefix'`=`i'-1'`suffix'
-		}			
-	}
-	
-	qui replace `varlist'=`nquantiles' if `touse' & `exp'>`prefix'`nqm1'`suffix'
-
+	qui gen `varlist'=1+irecode(`exp'`cutvallist') if `touse'
 	label var `varlist' "`nquantiles' quantiles of `exp'"
 	
 	* Return values
 	if ("`samplesize'"!="") return scalar n = `samplesize'
 	else return scalar n = .
+	
 	return scalar N = `popsize'
-	forvalues i=`nqm1'(-1)1 {
-		return scalar r`i' = `prefix'`i'`suffix'
+	
+	local cutvallist : subinstr local cutvallist "," " ", all
+	tokenize `"`cutvallist'"'
+	forvalues i=`=`nquantiles'-1'(-1)1 {
+		return scalar r`i' = ``i''
 	}
 
 end
