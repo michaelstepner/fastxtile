@@ -1,4 +1,4 @@
-*! version 1.1  27aug2013  Michael Stepner, stepner@mit.edu
+*! version 1.11  2sep2013  Michael Stepner, stepner@mit.edu
 
 program define fastxtile, rclass
 	version 11
@@ -51,14 +51,16 @@ program define fastxtile, rclass
 		}
 
 		* Check if need to gen a temporary uniform random var
-		if `randcut'<1 & `randcut'>0 & "`randvar'"=="" {
-			tempvar randvar
-			gen `randvar'=uniform()
-		}
-		* randcut sanity check
-		else if `randcut'!=1 {
-			di as error "if randcut() is specified without randvar(), a uniform r.v. will be generated and randcut() must be in (0,1)"
-			exit 198
+		if "`randvar'"=="" {
+			if (`randcut'<1 & `randcut'>0) { 
+				tempvar randvar
+				gen `randvar'=runiform()
+			}
+			* randcut sanity check
+			else if `randcut'!=1 {
+				di as error "if randcut() is specified without randvar(), a uniform r.v. will be generated and randcut() must be in (0,1)"
+				exit 198
+			}
 		}
 
 		* Mark observations used to calculate quantile boundaries
