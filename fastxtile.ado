@@ -100,8 +100,9 @@ program define fastxtile, rclass
 		_pctile `exp' if `randsample' `wt', nq(`nquantiles') `altdef'
 
 		* Store quantile boundaries in list
+		local maxlist 248
 		forvalues i=1/`=`nquantiles'-1' {
-			local cutvallist `cutvallist' r(r`i')
+			local cutvallist`=ceil(`i'/`maxlist')' `cutvallist`=ceil(`i'/`maxlist')'' r(r`i')
 		}
 	}
 	else if "`cutpoints'"!="" { /***** CUTPOINTS *****/
@@ -126,8 +127,10 @@ program define fastxtile, rclass
 		else {
 			local nquantiles = r(r) + 1
 			
+			* Store quantile boundaries in list
+			local maxlist 245
 			forvalues i=1/`r(r)' {
-				local cutvallist `cutvallist' `cutvals'[`i',1]
+				local cutvallist`=ceil(`i'/`maxlist')' `cutvallist`=ceil(`i'/`maxlist')'' `cutvals'[`i',1]
 			}
 		}
 	}
@@ -139,7 +142,8 @@ program define fastxtile, rclass
 		
 		* parse numlist
 		numlist "`cutvalues'"
-		local cutvallist `"`r(numlist)'"'
+		local maxlist=-1
+		local cutvallist1 `"`r(numlist)'"'
 		local nquantiles=wordcount(`"`r(numlist)'"')+1
 	}
 
@@ -149,8 +153,14 @@ program define fastxtile, rclass
 	else local qtype long
 
 	* Create quantile variable
-	local cutvalcommalist : subinstr local cutvallist " " ",", all
+	local cutvalcommalist : subinstr local cutvallist1 " " ",", all
 	qui gen `qtype' `varlist'=1+irecode(`exp',`cutvalcommalist') if `touse'
+	
+	forvalues i=2/`=ceil((`nquantiles'-1)/`maxlist')' {
+		local cutvalcommalist : subinstr local cutvallist`i' " " ",", all
+		qui replace `varlist'=1 + `maxlist'*(`i'-1) + irecode(`exp',`cutvalcommalist') if `varlist'==1 + `maxlist'*(`i'-1)
+	}
+
 	label var `varlist' "`nquantiles' quantiles of `exp'"
 	
 	* Return values
@@ -159,9 +169,13 @@ program define fastxtile, rclass
 	
 	return scalar N = `popsize'
 	
-	tokenize `"`cutvallist'"'
-	forvalues i=`=`nquantiles'-1'(-1)1 {
-		return scalar r`i' = ``i''
+	local c=`nquantiles'-1
+	forvalues j=`=max(ceil((`nquantiles'-1)/`maxlist'),1)'(-1)1 {
+		tokenize `"`cutvallist`j''"' /*XX*/
+		forvalues i=`: word count `cutvallist`j'''(-1)1 {
+			return scalar r`c' = ``i''
+			local --c
+		}
 	}
 
 end
