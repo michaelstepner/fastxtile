@@ -1,4 +1,4 @@
-*! version 1.22  4jul2014  Michael Stepner, stepner@mit.edu
+*! version 1.22  24jul2014  Michael Stepner, stepner@mit.edu
 
 /* CC0 license information:
 To the extent possible under law, the author has dedicated all copyright and related and neighboring rights
@@ -117,20 +117,20 @@ program define fastxtile, rclass
 			exit 198
 		}
 
-		tempname cutvals
-		qui tab `cutpoints', matrow(`cutvals')
-		
-		if r(r)==0 {
+		* Find quantile boundaries from cutpoints var
+		mata: process_cutp_var("`cutpoints'")
+
+		* Store quantile boundaries in list
+		if r(nq)==1 {
 			di as error "cutpoints() all missing"
 			exit 2000
 		}
 		else {
-			local nquantiles = r(r) + 1
+			local nquantiles = r(nq)
 			
-			* Store quantile boundaries in list
-			local maxlist 245
-			forvalues i=1/`r(r)' {
-				local cutvallist`=ceil(`i'/`maxlist')' `cutvallist`=ceil(`i'/`maxlist')'' `cutvals'[`i',1]
+			local maxlist 248
+			forvalues i=1/`=`nquantiles'-1' {
+				local cutvallist`=ceil(`i'/`maxlist')' `cutvallist`=ceil(`i'/`maxlist')'' r(r`i')
 			}
 		}
 	}
@@ -144,7 +144,8 @@ program define fastxtile, rclass
 		numlist "`cutvalues'"
 		local maxlist=-1
 		local cutvallist1 `"`r(numlist)'"'
-		local nquantiles=wordcount(`"`r(numlist)'"')+1
+		local nquantiles : word count `r(numlist)'
+		local ++nquantiles
 	}
 
 	* Pick data type for quantile variable
@@ -162,7 +163,7 @@ program define fastxtile, rclass
 	}
 
 	label var `varlist' "`nquantiles' quantiles of `exp'"
-	
+
 	* Return values
 	if ("`samplesize'"!="") return scalar n = `samplesize'
 	else return scalar n = .
@@ -171,12 +172,38 @@ program define fastxtile, rclass
 	
 	local c=`nquantiles'-1
 	forvalues j=`=max(ceil((`nquantiles'-1)/`maxlist'),1)'(-1)1 {
-		tokenize `"`cutvallist`j''"' /*XX*/
+		tokenize `"`cutvallist`j''"'
 		forvalues i=`: word count `cutvallist`j'''(-1)1 {
 			return scalar r`c' = ``i''
 			local --c
 		}
 	}
+
+end
+
+
+version 11
+set matastrict on
+
+mata:
+
+void process_cutp_var(string scalar var) {
+
+	// Load and sort cutpoints	
+	real colvector cutp
+	cutp=sort(st_data(.,st_varindex(var)),1)
+	
+	// Return them to Stata
+	stata("clear results")
+	real scalar ind
+	ind=1
+	while (cutp[ind]!=.) {
+		st_numscalar("r(r"+strofreal(ind)+")",cutp[ind])
+		ind=ind+1
+	}
+	st_numscalar("r(nq)",ind)
+	
+}
 
 end
 
