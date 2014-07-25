@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.21  8oct2013}{...}
+{* *! version 1.22  24jul2014}{...}
 {viewerjumpto "Syntax" "fastxtile##syntax"}{...}
 {viewerjumpto "Description" "fastxtile##description"}{...}
 {viewerjumpto "Options" "fastxtile##options"}{...}

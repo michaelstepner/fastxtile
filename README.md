@@ -1,5 +1,5 @@
 fastxtile: just like Stata's xtile, but faster
-==============================================
+----------------------------------------------
 
 fastxtile is a drop-in replacement for Stata's built-in command xtile. It has the same syntax and produces identical results, but runs substantially faster in large datasets. fastxtile also has a few added features.
 
