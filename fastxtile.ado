@@ -173,7 +173,7 @@ program define fastxtile, rclass byable(recall, noheader)
 	label var `varlist' "`nquantiles' quantiles of `exp'"
 	
 	* Combine created quantile variables for last by-group
-	if _bylastcall() {
+	if _by() & _bylastcall() {
 		
 		forvalues i=1/`=_byindex()' {
 			if (`i'==1) local qlist `qvar'`i'
