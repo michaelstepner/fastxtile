@@ -211,6 +211,8 @@ file open `outcsv' using "testresults/fastxtile_tests_`timestamp'.csv", write te
 file write `outcsv' "length,width,datatype,reps,nquantiles,xtile secs,fastxtile secs,faster factor" _n
 
 * Print system characteristics to log
+which fastxtile
+
 di "Stata version `c(stata_version)'; `c(born_date)'"
 di "`c(bit)' bit"
 
