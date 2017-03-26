@@ -17,7 +17,7 @@ program define test_fastxtile
 
 	version 12.1
 
-	syntax, [Length(integer 1000) Width(integer 1) integer reps(integer 1) csvwrite(string) Nquantiles(integer 2) noisily *]
+	syntax, [Length(integer 1000) Width(integer 1) integer reps(integer 1) BYgroups(integer 1) csvwrite(string) Nquantiles(integer 2) verbose *]
 
 	* Prep dataset
 	clear
@@ -31,13 +31,18 @@ program define test_fastxtile
 		gen float rand=rnormal()
 	}
 	
+	if (`bygroups'>1) {
+		gen int byvar=ceil(runiform()*`bygroups')
+		sort byvar
+	}
+	
 	if (`width'>1) {
 		forvalues i=2/`width' {
 			gen float w`i'=rnormal()
 		}
 	}
 	
-	di "Testing fastxtile: length `length', width `width', `integer', `reps' reps, `nquantiles' quantiles"
+	di "Testing fastxtile: length `length', width `width', `integer', `reps' reps, `nquantiles' quantiles, `bygroups' by-groups"
 		
 	
 	* Perform testing
@@ -50,7 +55,25 @@ program define test_fastxtile
 	
 		local coinflip=round(runiform())
 		
-		if (`coinflip'==0) {
+		if (`bygroups'>1) {
+			timer on 1
+			by byvar: fastxtile `fxt'=rand, nq(`nquantiles') `options'
+			timer off 1
+			
+			timer on 2
+			forvalues b=1/`bygroups' {
+				xtile xt`b'=rand if byvar==`b', nq(`nquantiles') `options'
+
+				if (`b'==1) local qlist xt`b'
+				else local qlist `qlist',xt`b'
+			}
+			gen `xt'=min(`qlist')
+			forvalues b=1/`bygroups' {
+				drop xt`b'
+			}
+			timer off 2	
+		}
+		else if (`coinflip'==0) {
 			timer on 1
 			fastxtile `fxt'=rand, nq(`nquantiles') `options'
 			timer off 1
@@ -76,7 +99,7 @@ program define test_fastxtile
 	
 	* Display timings
 	qui timer list
-	if ("`noisily'"=="noisily") {
+	if ("`verbose'"=="verbose") {
 		di "fastxtile: " (r(t1)/r(nt1)) " seconds"
 		di "xtile: " (r(t2)/r(nt2)) " seconds"
 	}
@@ -84,7 +107,7 @@ program define test_fastxtile
 	
 	* Output timings
 	if "`csvwrite'"!="" {
-		file write `csvwrite' (`length') "," (`width') ",`integer'," (`reps') "," (`nquantiles') ","
+		file write `csvwrite' (`length') "," (`width') ",`integer'," (`reps') "," (`nquantiles') "," (`bygroups') ","
 		file write `csvwrite' (r(t2)/r(nt2)) "," (r(t1)/r(nt1)) "," ( (r(t2)/r(nt2)) / (r(t1)/r(nt1)) ) _n
 	}
 
@@ -136,6 +159,20 @@ assert quint3_xt==quint3_fxt
 
 list, sepby(quint3_xt)
 
+
+*** By-able
+
+clear
+set obs 4
+gen lvl=_n*10
+gen grp=_n>2
+
+bys grp: fastxtile fxt=lvl, nq(2)
+
+assert fxt[1]==1
+assert fxt[2]==2
+assert fxt[3]==1
+assert fxt[4]==2
 
 
 *******************
@@ -208,7 +245,7 @@ tempname outcsv outlog
 log using "testresults/fastxtile_tests_`timestamp'.txt", replace text name(`outlog')
 
 file open `outcsv' using "testresults/fastxtile_tests_`timestamp'.csv", write text replace
-file write `outcsv' "length,width,datatype,reps,nquantiles,xtile secs,fastxtile secs,faster factor" _n
+file write `outcsv' "length,width,datatype,reps,nquantiles,by-groups,xtile secs,fastxtile secs,faster factor" _n
 
 * Print system characteristics to log
 which fastxtile
@@ -227,17 +264,19 @@ di "Operating system: `c(os)' `c(osdtl)'. `c(machine_type)'"
 di "Running at: `timestamp'"
 
 * Perform tests
-foreach l in 1e3 1e5 1e7 {
-	foreach w in 1 10 100 {
-		foreach nq in 2 10 100 {
-			foreach dtype in integer "" {
-			
-				if (`l'<=1e3) local reps 200
-				else if (`l'<=1e5) local reps 20
-				else local reps 2
-			
-				test_fastxtile, l(`l') w(`w') nq(`nq') `dtype' reps(`reps') csvwrite(`outcsv')
+foreach b in 1 2 20 200 {
+	foreach l in 1e3 1e5 1e7 {
+		foreach w in 1 10 100 {
+			foreach nq in 2 10 100 {
+				foreach dtype in integer "" {
 				
+					if (`l'<=1e3) local reps 200
+					else if (`l'<=1e5) local reps 20
+					else local reps 2
+				
+					test_fastxtile, l(`l') w(`w') nq(`nq') bygroups(`b') `dtype' reps(`reps') csvwrite(`outcsv')
+					
+				}
 			}
 		}
 	}
