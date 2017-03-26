@@ -11,7 +11,7 @@ human-readable summary can be accessed at http://creativecommons.org/publicdomai
 * Why did I include a formal license? Jeff Atwood gives good reasons: http://www.codinghorror.com/blog/2007/04/pick-a-license-any-license.html
 
 
-program define fastxtile, rclass byable(recall)
+program define fastxtile, rclass byable(recall, noheader)
 	version 11
 
 	* Parse weights, if any
@@ -22,6 +22,12 @@ program define fastxtile, rclass byable(recall)
 	* Extract parameters
 	syntax newvarname=/exp [if] [in] [,Nquantiles(integer 2) Cutpoints(varname numeric) ALTdef ///
 		CUTValues(numlist ascending) randvar(varname numeric) randcut(real 1) randn(integer -1)]
+	
+	* Handle unique new varnames for by()
+	if _by() {
+		local qvar `varlist'
+		local varlist `varlist'`=_byindex()'
+	}
 	
 	* Mark observations which will be placed in quantiles
 	tempvar touse
@@ -165,6 +171,22 @@ program define fastxtile, rclass byable(recall)
 	}
 
 	label var `varlist' "`nquantiles' quantiles of `exp'"
+	
+	* Combine created quantile variables for last by-group
+	if _bylastcall() {
+		
+		forvalues i=1/`=_byindex()' {
+			if (`i'==1) local qlist `qvar'`i'
+			else local qlist `qlist',`qvar'`i'
+		}
+		
+		gen `qvar'=min(`qlist')
+		
+		forvalues i=1/`=_byindex()' {
+			drop `qvar'`i'
+		}
+		
+	}
 
 	* Return values
 	if ("`samplesize'"!="") return scalar n = `samplesize'
