@@ -180,7 +180,7 @@ program define fastxtile, rclass byable(recall, noheader)
 			else local qlist `qlist',`qvar'`i'
 		}
 		
-		gen `qvar'=min(`qlist')
+		qui gen `qtype' `qvar'=min(`qlist')
 		
 		forvalues i=1/`=_byindex()' {
 			drop `qvar'`i'
