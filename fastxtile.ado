@@ -22,10 +22,12 @@ program define fastxtile, rclass byable(recall)
 	* Extract parameters
 	syntax newvarname=/exp [if] [in] [,Nquantiles(integer 2) Cutpoints(varname numeric) ALTdef ///
 		CUTValues(numlist ascending) randvar(varname numeric) randcut(real 1) randn(integer -1)]
-
+	
 	* Mark observations which will be placed in quantiles
-	marksample touse, novarlist
+	tempvar touse
+	mark `touse' `if' `in' `wt'
 	markout `touse' `exp'
+	
 	qui count if `touse'
 	local popsize=r(N)
 
