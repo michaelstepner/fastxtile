@@ -1,0 +1,4 @@
+v 3
+d fastxtile development repository
+d by Michael Stepner (stepner@mit.edu)
+p fastxtile module to generate a variable of quantile categories
