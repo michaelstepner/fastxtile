@@ -1,4 +1,4 @@
-*! version 1.22  24jul2014  Michael Stepner, stepner@mit.edu
+*! version 2.0.0beta1  26mar2017  Michael Stepner, stepner@mit.edu
 
 /* CC0 license information:
 To the extent possible under law, the author has dedicated all copyright and related and neighboring rights
@@ -11,7 +11,7 @@ human-readable summary can be accessed at http://creativecommons.org/publicdomai
 * Why did I include a formal license? Jeff Atwood gives good reasons: http://www.codinghorror.com/blog/2007/04/pick-a-license-any-license.html
 
 
-program define fastxtile, rclass
+program define fastxtile, rclass byable(recall)
 	version 11
 
 	* Parse weights, if any
