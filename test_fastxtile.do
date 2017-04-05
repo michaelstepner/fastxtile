@@ -270,6 +270,8 @@ foreach b in 1 2 20 200 {
 			foreach nq in 2 10 100 {
 				foreach dtype in integer "" {
 				
+					if (`l'<=1e3 & `b'>=20) continue
+				
 					if (`l'<=1e3) local reps 200
 					else if (`l'<=1e5) local reps 20
 					else local reps 2
