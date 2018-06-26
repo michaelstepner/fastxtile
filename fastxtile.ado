@@ -108,7 +108,7 @@ program define fastxtile, rclass byable(recall, noheader)
 				exit 198
 			}
 			else {
-				noisily _dots _byindex() 1
+				noisily _dots `=_byindex()' 1
 				exit
 			}
 		}
@@ -182,7 +182,7 @@ program define fastxtile, rclass byable(recall, noheader)
 		qui replace `qvar'=1 + `maxlist'*(`i'-1) + irecode(`exp',`cutvalcommalist') if `touse' & `qvar'==1 + `maxlist'*(`i'-1)
 	}
 
-	if (_by()==1) nois _dots _byindex() 0
+	if (_by()==1) nois _dots `=_byindex()' 0
 	
 	if _bylastcall() {
 	
