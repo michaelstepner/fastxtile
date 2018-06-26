@@ -173,7 +173,8 @@ program define fastxtile, rclass byable(recall, noheader)
 	* Create quantile variable
 	local cutvalcommalist : subinstr local cutvallist1 " " ",", all
 	
-	if (_byindex()==1) qui gen `qtype' `qvar'=1+irecode(`exp',`cutvalcommalist') if `touse'
+	cap confirm new variable `qvar'
+	if (_rc==0) qui gen `qtype' `qvar'=1+irecode(`exp',`cutvalcommalist') if `touse'
 	else qui replace `qvar'=1+irecode(`exp',`cutvalcommalist') if `touse'
 	
 	forvalues i=2/`=ceil((`nquantiles'-1)/`maxlist')' {
