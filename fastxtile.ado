@@ -1,4 +1,4 @@
-*! version 2.0.0beta1  26mar2017  Michael Stepner, stepner@mit.edu
+*! version 2.0.0beta2  26jun2018  Michael Stepner, stepner@mit.edu
 
 /* CC0 license information:
 To the extent possible under law, the author has dedicated all copyright and related and neighboring rights
@@ -20,14 +20,15 @@ program define fastxtile, rclass byable(recall, noheader)
 	local wt "`s(weight)'"  /* contains [weight=exp] or nothing */
 
 	* Extract parameters
-	syntax newvarname=/exp [if] [in] [,Nquantiles(integer 2) Cutpoints(varname numeric) ALTdef ///
+	syntax name=/exp [if] [in] [,Nquantiles(integer 2) Cutpoints(varname numeric) ALTdef ///
 		CUTValues(numlist ascending) randvar(varname numeric) randcut(real 1) randn(integer -1)]
+	local qvar `namelist'
 	
-	* Handle unique new varnames for by()
-	if _by() {
-		local qvar `varlist'
-		local varlist `varlist'`=_byindex()'
-	}
+	* Check that the variable to be created does not already exist
+	if (_byindex()==1) confirm new variable `qvar'
+	
+	* If there's a by-var, use dots
+	if (_by()==1 & _byindex()==1) noisily _dots 0, title(Looping over by-groups:)
 	
 	* Mark observations which will be placed in quantiles
 	tempvar touse
@@ -84,28 +85,36 @@ program define fastxtile, rclass byable(recall, noheader)
 
 		* Mark observations used to calculate quantile boundaries
 		if ("`randvar'"!="") {
-			tempvar randsample
-			mark `randsample' `wt' if `touse' & `randvar'<=`randcut'
+			tempvar sample
+			mark `sample' `wt' if `touse' & `randvar'<=`randcut'
+			
+			qui count if `sample'
+			local samplesize=r(N)
 		}
 		else {
-			local randsample `touse'
+			local sample `touse'
+			local samplesize `popsize'
 		}
 
 		* Error checks
-		qui count if `randsample'
-		local samplesize=r(N)
-		if (`nquantiles' > r(N) + 1) {
-			if ("`randvar'"=="") di as error "nquantiles() must be less than or equal to the number of observations [`r(N)'] plus one"
-			else di as error "nquantiles() must be less than or equal to the number of sampled observations [`r(N)'] plus one"
-			exit 198
-		}
-		else if (`nquantiles' < 2) {
+		if (`nquantiles' < 2) {
 			di as error "nquantiles() must be greater than or equal to 2"
 			exit 198
 		}
+		else if (`nquantiles' > `samplesize' + 1) {
+			if (_by()==0) {
+				if ("`randvar'"=="") di as error "nquantiles() must be less than or equal to the number of observations [`r(N)'] plus one"
+				else di as error "nquantiles() must be less than or equal to the number of sampled observations [`r(N)'] plus one"
+				exit 198
+			}
+			else {
+				noisily _dots _byindex() 1
+				exit
+			}
+		}
 
 		* Compute quantile boundaries
-		_pctile `exp' if `randsample' `wt', nq(`nquantiles') `altdef'
+		_pctile `exp' if `sample' `wt', nq(`nquantiles') `altdef'
 
 		* Store quantile boundaries in list
 		local maxlist 248
@@ -163,46 +172,40 @@ program define fastxtile, rclass byable(recall, noheader)
 
 	* Create quantile variable
 	local cutvalcommalist : subinstr local cutvallist1 " " ",", all
-	qui gen `qtype' `varlist'=1+irecode(`exp',`cutvalcommalist') if `touse'
+	
+	if (_byindex()==1) qui gen `qtype' `qvar'=1+irecode(`exp',`cutvalcommalist') if `touse'
+	else qui replace `qvar'=1+irecode(`exp',`cutvalcommalist') if `touse'
 	
 	forvalues i=2/`=ceil((`nquantiles'-1)/`maxlist')' {
 		local cutvalcommalist : subinstr local cutvallist`i' " " ",", all
-		qui replace `varlist'=1 + `maxlist'*(`i'-1) + irecode(`exp',`cutvalcommalist') if `varlist'==1 + `maxlist'*(`i'-1)
+		qui replace `qvar'=1 + `maxlist'*(`i'-1) + irecode(`exp',`cutvalcommalist') if `touse' & `qvar'==1 + `maxlist'*(`i'-1)
 	}
 
-	label var `varlist' "`nquantiles' quantiles of `exp'"
+	if (_by()==1) nois _dots _byindex() 0
 	
-	* Combine created quantile variables for last by-group
-	if _by() & _bylastcall() {
+	if _bylastcall() {
+	
+		* Label var
+		if (_by()==1) label var `qvar' "`nquantiles' quantiles of `exp'; by `_byvars'"
+		else label var `qvar' "`nquantiles' quantiles of `exp'"
 		
-		forvalues i=1/`=_byindex()' {
-			if (`i'==1) local qlist `qvar'`i'
-			else local qlist `qlist',`qvar'`i'
-		}
+		* Return values
+		if ("`samplesize'"!="") return scalar n = `samplesize'
+		else return scalar n = .
 		
-		qui gen `qtype' `qvar'=min(`qlist')
+		return scalar N = `popsize'
 		
-		forvalues i=1/`=_byindex()' {
-			drop `qvar'`i'
+		local c=`nquantiles'-1
+		forvalues j=`=max(ceil((`nquantiles'-1)/`maxlist'),1)'(-1)1 {
+			tokenize `"`cutvallist`j''"'
+			forvalues i=`: word count `cutvallist`j'''(-1)1 {
+				return scalar r`c' = ``i''
+				local --c
+			}
 		}
 		
 	}
-
-	* Return values
-	if ("`samplesize'"!="") return scalar n = `samplesize'
-	else return scalar n = .
 	
-	return scalar N = `popsize'
-	
-	local c=`nquantiles'-1
-	forvalues j=`=max(ceil((`nquantiles'-1)/`maxlist'),1)'(-1)1 {
-		tokenize `"`cutvallist`j''"'
-		forvalues i=`: word count `cutvallist`j'''(-1)1 {
-			return scalar r`c' = ``i''
-			local --c
-		}
-	}
-
 end
 
 
